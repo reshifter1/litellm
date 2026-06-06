@@ -7713,6 +7713,12 @@ def stream_chunk_builder(  # noqa: PLR0915
                 reasoning_tokens=0,
             )
             setattr(response, "usage", usage)
+            # Surface a provider-reported streaming cost so response_cost_calculator
+            # uses it instead of falling back to the (possibly missing) price map.
+            if getattr(usage, "cost", None) is not None:
+                response._hidden_params.setdefault("additional_headers", {})[
+                    "llm_provider-x-litellm-response-cost"
+                ] = str(usage.cost)
 
             # Propagate provider_specific_fields from chunk hidden params when present.
             for chunk in reversed(chunks):
@@ -7891,6 +7897,12 @@ def stream_chunk_builder(  # noqa: PLR0915
         )
 
         setattr(response, "usage", usage)
+        # Surface a provider-reported streaming cost so response_cost_calculator
+        # uses it instead of falling back to the (possibly missing) price map.
+        if getattr(usage, "cost", None) is not None:
+            response._hidden_params.setdefault("additional_headers", {})[
+                "llm_provider-x-litellm-response-cost"
+            ] = str(usage.cost)
 
         # Propagate provider_specific_fields from the last chunk (contains provider
         # metadata like traffic_type set during streaming)
