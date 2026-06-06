@@ -589,6 +589,110 @@ def test_stream_chunk_builder_accepts_dict_snapshot_chunks():
     assert response.choices[0].message.content == "Hello world"
 
 
+def test_calculate_usage_preserves_provider_cost():
+    """
+    Some providers (e.g. OpenRouter with usage.include) report an authoritative
+    cost on the final streaming usage chunk. calculate_usage must keep it on the
+    aggregated Usage so downstream cost tracking can use it instead of the price map.
+    """
+    chunk1 = ModelResponseStream(
+        id="chatcmpl-cost-1",
+        created=1745513206,
+        model="openrouter/deepseek/deepseek-chat",
+        object="chat.completion.chunk",
+        choices=[
+            StreamingChoices(
+                finish_reason=None,
+                index=0,
+                delta=Delta(content="hi", role="assistant"),
+            )
+        ],
+        stream_options={"include_usage": True},
+    )
+
+    chunk2 = ModelResponseStream(
+        id="chatcmpl-cost-1",
+        created=1745513207,
+        model="openrouter/deepseek/deepseek-chat",
+        object="chat.completion.chunk",
+        choices=[
+            StreamingChoices(
+                finish_reason="stop",
+                index=0,
+                delta=Delta(content=None, role=None),
+            )
+        ],
+        stream_options={"include_usage": True},
+        usage=Usage(
+            completion_tokens=27,
+            prompt_tokens=50,
+            total_tokens=77,
+            cost=0.000123,
+        ),
+    )
+
+    chunks = [chunk1, chunk2]
+    processor = ChunkProcessor(chunks=chunks)
+
+    usage = processor.calculate_usage(
+        chunks=chunks,
+        model="openrouter/deepseek/deepseek-chat",
+        completion_output="hi",
+    )
+
+    assert usage.cost == 0.000123
+
+
+def test_stream_chunk_builder_sets_provider_cost_header():
+    """
+    When a streamed usage chunk carries a provider cost, stream_chunk_builder must
+    expose it via the response-cost header so response_cost_calculator picks it up.
+    """
+    chunk1 = ModelResponseStream(
+        id="chatcmpl-cost-2",
+        created=1,
+        model="openrouter/deepseek/deepseek-chat",
+        object="chat.completion.chunk",
+        choices=[
+            StreamingChoices(
+                finish_reason=None,
+                index=0,
+                delta=Delta(content="hi", role="assistant"),
+            )
+        ],
+        stream_options={"include_usage": True},
+    )
+    chunk2 = ModelResponseStream(
+        id="chatcmpl-cost-2",
+        created=2,
+        model="openrouter/deepseek/deepseek-chat",
+        object="chat.completion.chunk",
+        choices=[
+            StreamingChoices(
+                finish_reason="stop",
+                index=0,
+                delta=Delta(content=None, role=None),
+            )
+        ],
+        stream_options={"include_usage": True},
+        usage=Usage(
+            completion_tokens=27,
+            prompt_tokens=50,
+            total_tokens=77,
+            cost=0.000123,
+        ),
+    )
+
+    response = stream_chunk_builder(chunks=[chunk1, chunk2])
+    assert response is not None
+    assert (
+        response._hidden_params["additional_headers"][
+            "llm_provider-x-litellm-response-cost"
+        ]
+        == "0.000123"
+    )
+
+
 def test_stream_chunk_builder_dict_snapshot_preserves_hidden_provider_fields():
     chunk = ModelResponseStream(
         id="chatcmpl-123",
