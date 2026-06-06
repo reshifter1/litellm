@@ -1,0 +1,20 @@
+FROM ghcr.io/berriai/litellm:v1.88.0-rc.3
+
+# The base image ships litellm twice: the source tree at /app/litellm and the
+# package installed into the venv. The server runs the `litellm` console script,
+# so it imports from the venv site-packages, not /app/litellm. Overlay the patch
+# onto the venv copy (resolved at build time so we don't hardcode the python
+# version), otherwise the running process never sees it.
+COPY litellm/main.py /tmp/patch/main.py
+COPY litellm/litellm_core_utils/streaming_chunk_builder_utils.py /tmp/patch/core_streaming_chunk_builder_utils.py
+COPY litellm/types/litellm_core_utils/streaming_chunk_builder_utils.py /tmp/patch/types_streaming_chunk_builder_utils.py
+
+RUN LITELLM_DIR="$(python3 -P -c 'import litellm, os; print(os.path.dirname(litellm.__file__))')" && \
+    cp /tmp/patch/main.py "$LITELLM_DIR/main.py" && \
+    cp /tmp/patch/core_streaming_chunk_builder_utils.py "$LITELLM_DIR/litellm_core_utils/streaming_chunk_builder_utils.py" && \
+    cp /tmp/patch/types_streaming_chunk_builder_utils.py "$LITELLM_DIR/types/litellm_core_utils/streaming_chunk_builder_utils.py" && \
+    rm -rf /tmp/patch && \
+    python3 -m compileall -q \
+        "$LITELLM_DIR/main.py" \
+        "$LITELLM_DIR/litellm_core_utils/streaming_chunk_builder_utils.py" \
+        "$LITELLM_DIR/types/litellm_core_utils/streaming_chunk_builder_utils.py"
