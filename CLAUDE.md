@@ -38,6 +38,8 @@ Run tests, format your code, and lint your code before each commit
 
 Ask to commit and push your work when you're done (or if you're confident that your code is good and works, just do it)
 
+Whenever you do commit, push it: run `git push origin <current branch>` right after. A commit left sitting unpushed doesn't count as finished work. This applies to `origin` only - never push to `upstream` (the BerriAI/litellm repo)
+
 When you must use real LLM models to, for example, write e2e tests, write a QA runbook, etc., make sure to use the latest models (doesn't have to be smartest, can also be a modern small, fast one. No strong preference for smart vs fast here, just use something modern) as of the year and month of the current date. Do a web search as necessary to figure that out
 
 If you're an internal contributor, when creating a new PR, the typical flow is to branch off litellm_internal_staging and create a branch prefixed with litellm_. Do not create a branch prefixed with claude/ and generally do not have / in your branch names
