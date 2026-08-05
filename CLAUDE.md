@@ -54,6 +54,23 @@ Do not put names of customers or customer company names in code, PRs, and issues
 
 CI supply-chain safety: Never pipe a remote script into a shell (`curl ... | bash`, `wget ... | sh`); download the artifact to a file, verify its SHA-256 checksum, then install. Pin every external tool to a specific version with a full URL (not `latest` or `stable`). Verify checksums for all downloaded binaries, using the provider's official `.sha256` / `.sha256sum` sidecar when available. These rules apply to every download in CI
 
+## Ошибки и фоллбэки
+
+- **Фоллбэк - только по согласованию.** ЗАПРЕЩЕНО молча писать запасной путь на
+  случай ошибки: подставлять дефолт вместо упавшего вызова, глотать ошибку логом
+  и продолжать, возвращать пустой/частичный результат вместо отказа, брать
+  "примерно то же" из кэша, ретраить в тишине. Нужен фоллбэк - **сначала спроси**,
+  объясни, чем он лучше честного отказа, и пиши только после согласия.
+- **Ошибка обязана падать громко:** с именем причины, и там, где её увидит
+  человек. Ошибка, о которой никто не узнал, - это не обработанная ошибка.
+- **Успех внешнего вызова определяется телом ответа, а не кодом ответа.** Мало
+  проверить HTTP-статус: смотреть на вложенную ошибку провайдера, обрезанный по
+  лимиту результат, пустой результат. 200 с ошибкой внутри - это ошибка.
+- **Почему это жёстко:** молчаливые фоллбэки годами прятали реальные поломки -
+  всё "работало", просто плохо, и никто не знал, что именно сломано. Инцидент
+  2026-08-05 (smm-app): провайдер отдавал 429 внутри HTTP 200, клиент считал это
+  успехом, прогоны молча теряли часть работы и списывали с людей полную цену.
+
 ## Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs**
