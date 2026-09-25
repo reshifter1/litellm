@@ -10,8 +10,6 @@ log.txt
 docker/Dockerfile.*
 
 # Claude Flow generated files (must be excluded from Docker build)
-.claude/
-.claude-flow/
 .swarm/
 .hive-mind/
 memory/
